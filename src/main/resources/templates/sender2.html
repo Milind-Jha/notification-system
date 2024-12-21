@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Notifications</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <style>
+        #notifications {
+            border: 1px solid #ccc;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .sent {
+            color: blue;
+        }
+        .received {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+<h1>Real-Time Notifications</h1>
+
+<div id="notifications">
+    <h3>Messages</h3>
+</div>
+
+<input type="text" id="message" placeholder="Enter your message">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        const socket = new SockJS('http://localhost:8080/ws');  // Correct WebSocket URL
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+            stompClient.subscribe('/topic/notifications', function (message) {
+                showMessage(message.body, 'received'); // Handle incoming messages
+            });
+        }, function (error) {
+            console.error('WebSocket connection error: ' + error);
+        });
+    }
+
+    function sendMessage() {
+        const message = document.getElementById('message').value;
+        if (stompClient && stompClient.connected) {
+            stompClient.send('/app/sendMessage', {}, message);
+            showMessage(message, 'sent'); // Show the sent message
+            console.log('Message sent:', message);
+            document.getElementById('message').value = ''; // Clear the input
+        } else {
+            console.error('WebSocket connection is not established.');
+        }
+    }
+
+    function showMessage(message, type) {
+        const notifications = document.getElementById('notifications');
+        const notification = document.createElement('p');
+        notification.textContent = `${type === 'sent' ? 'Sent:' : 'Received:'} ${message}`;
+        notification.classList.add('message', type);
+        notifications.appendChild(notification);
+        notifications.scrollTop = notifications.scrollHeight; // Auto-scroll to the latest message
+    }
+
+    connect();
+</script>
+</body>
+</html>
